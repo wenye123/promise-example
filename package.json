@@ -1,7 +1,7 @@
 {
-  "name": "promise",
+  "name": "promise-example",
   "version": "1.0.0",
-  "description": "温叶自己实现的promise",
+  "description": "温叶自己实现的promise例子",
   "keywords": [
     "promise",
     "typescript",
@@ -41,12 +41,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wenye123/promise.git"
+    "url": "git+https://github.com/wenye123/promise-example.git"
   },
   "bugs": {
-    "url": "https://github.com/wenye123/promise/issues"
+    "url": "https://github.com/wenye123/promise-example/issues"
   },
-  "homepage": "https://github.com/wenye123/promise#readme",
+  "homepage": "https://github.com/wenye123/promise-example#readme",
   "devDependencies": {
     "@types/chai": "^4.2.11",
     "@types/mocha": "^7.0.2",
