@@ -1,0 +1,61 @@
+{
+  "name": "promise",
+  "version": "1.0.0",
+  "description": "温叶自己实现的promise",
+  "keywords": [
+    "promise",
+    "typescript",
+    "wenye"
+  ],
+  "author": "wenye <1583247975@qq.com>",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "format": "prettier --write \"./{src,benchmark,test}/**/*.{js,ts,json,yaml}\"",
+    "compile": "rm -rf dist && tsc",
+    "prepublish": "npm run compile",
+    "test": "npm run format && mocha test/test-*.ts",
+    "test:cov": "nyc mocha test/test-*.ts"
+  },
+  "nyc": {
+    "all": true,
+    "extension": [
+      ".ts"
+    ],
+    "include": [
+      "src"
+    ],
+    "reporter": [
+      "text",
+      "text-summary",
+      "lcov"
+    ],
+    "exclude": [
+      "**/*.d.ts"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wenye123/promise.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wenye123/promise/issues"
+  },
+  "homepage": "https://github.com/wenye123/promise#readme",
+  "devDependencies": {
+    "@types/chai": "^4.2.11",
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^13.9.1",
+    "chai": "^4.2.0",
+    "coveralls": "^3.0.9",
+    "mocha": "^7.1.0",
+    "nyc": "^15.0.0",
+    "prettier": "^1.19.1",
+    "ts-node": "^8.6.2",
+    "typescript": "^3.8.3"
+  }
+}
