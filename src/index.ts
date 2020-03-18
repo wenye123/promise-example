@@ -1,9 +1,14 @@
+/**
+ * 一个promise搭配一个then，then的两个参数是promise完成后的成功或失败的回调函数，有多少个promise就要有多少个then
+ */
+
 export type IPromiseExecFn = (resolve: IPromiseResove, reject: IPromiseReject) => any;
 export type IPromiseResolveFn = (res: any) => any;
 export type IPromiseRejectFn = (reason: any) => any;
 export type IPromiseResove = (res: any) => void;
 export type IPromiseReject = (reason: any) => void;
-export type IIPromiseState = "pending" | "resolved" | "rejected";
+export type IPromiseFinallyCb = () => any;
+export type IPromiseState = "pending" | "resolved" | "rejected";
 export interface IPromiseTask {
   resolveCb: IPromiseResolveFn | undefined;
   rejectCb: IPromiseRejectFn | undefined;
@@ -14,7 +19,7 @@ export interface IPromiseTask {
 export class Promise {
   private tasks: IPromiseTask[] = [];
   private value: any = null;
-  private state: IIPromiseState = "pending";
+  private state: IPromiseState = "pending";
 
   /** 构造函数 */
   constructor(execFn: IPromiseExecFn) {
@@ -25,12 +30,109 @@ export class Promise {
     }
   }
 
+  /** 生成一个resolve的promsie实例 */
+  static resolve(ret: any) {
+    if (ret instanceof Promise) return ret;
+    return new Promise((resolve, reject) => {
+      // thenable
+      if (ret && (typeof ret === "object" || typeof ret === "function")) {
+        setTimeout(() => {
+          (ret as Promise).then(resolve, reject);
+        });
+      } else {
+        resolve(ret);
+      }
+    });
+  }
+
+  /** 生成一个reject的promise实例 */
+  static reject(reason: any) {
+    return new Promise((resolve, reject) => {
+      reject(reason);
+    });
+  }
+
+  /** 所有promsie执行完才返回 */
+  static all(promises: any[]) {
+    return new Promise((resolve, reject) => {
+      let index = 0;
+      const ret: any[] = [];
+      if (promises.length === 0) {
+        resolve(ret);
+      } else {
+        for (let i = 0; i < promises.length; i++) {
+          Promise.resolve(promises[i]).then(
+            r => {
+              ret[i] = r;
+              if (++index === promises.length) resolve(ret);
+            },
+            e => {
+              reject(e);
+            },
+          );
+        }
+      }
+    });
+  }
+
+  /** 只要其中一个promise返回则返回 */
+  static race(promises: any[]) {
+    return new Promise((resolve, reject) => {
+      if (promises.length === 0) {
+        return;
+      } else {
+        for (let i = 0; i < promises.length; i++) {
+          Promise.resolve(promises[i]).then(
+            r => {
+              resolve(r);
+              return;
+            },
+            e => {
+              reject(e);
+              return;
+            },
+          );
+        }
+      }
+    });
+  }
+
+  then(resolveCb?: IPromiseResolveFn, rejectCb?: IPromiseRejectFn) {
+    return new Promise((resolve, reject) => {
+      this.handleTask({
+        resolveCb,
+        rejectCb,
+        resolve,
+        reject,
+      });
+    });
+  }
+
+  catch(rejectCb?: IPromiseRejectFn) {
+    return this.then(undefined, rejectCb);
+  }
+
+  /** finally之后还可以继续then，并将值原封传递 */
+  finally(cb: IPromiseFinallyCb) {
+    return this.then(val => {
+      return Promise.resolve(cb()).then(
+        () => {
+          return val;
+        },
+        err => {
+          return Promise.reject(cb()).then(() => {
+            throw err;
+          });
+        },
+      );
+    });
+  }
+
   /** 采用箭头函数是为了绑定this */
   private resolve = (ret: any) => {
     if (this.state === "pending") {
-      // resolve的值为IPromise实例
+      // resolve的值为promise实例或thenable
       if (ret && (typeof ret === "object" || typeof ret === "function")) {
-        // 为了兼容其他IPromise实现
         const then = ret.then;
         if (typeof then === "function") {
           then.call(ret, this.resolve, this.reject);
@@ -53,19 +155,7 @@ export class Promise {
     }
   };
 
-  /** 收集then任务并返回新的Promise */
-  then(resolveCb?: IPromiseResolveFn, rejectCb?: IPromiseRejectFn) {
-    return new Promise((resolve, reject) => {
-      this.handleTask({
-        resolveCb,
-        rejectCb,
-        resolve,
-        reject,
-      });
-    });
-  }
-
-  /** 处理任务 */
+  /** 处理任务，在一个promise周期中可能会调用两次 */
   private handleTask(task: IPromiseTask) {
     // 尚未resolve/reject时推入任务数组
     if (this.state === "pending") {
