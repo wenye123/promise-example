@@ -1,7 +1,3 @@
-/**
- * 一个promise搭配一个then，then的两个参数是promise完成后的成功或失败的回调函数，有多少个promise就要有多少个then
- */
-
 export type IPromiseExecutor = (resolve: IPromiseResove, reject: IPromiseReject) => any;
 export type IPromiseResolveFn = (res: any) => any;
 export type IPromiseRejectFn = (reason: any) => any;
@@ -177,17 +173,18 @@ export class Promise {
 
   /** finally之后还可以继续then，并将值原封传递 */
   finally(cb: IPromiseFinallyCb) {
-    return this.then(val => {
-      return Promise.resolve(cb()).then(
-        () => {
+    return this.then(
+      val => {
+        return Promise.resolve(cb()).then(() => {
           return val;
-        }
-      );
-    }, err => {
-      return Promise.resolve(cb()).then(() => {
-        throw err;
-      });
-    },);
+        });
+      },
+      err => {
+        return Promise.resolve(cb()).then(() => {
+          throw err;
+        });
+      },
+    );
   }
 }
 

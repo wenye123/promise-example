@@ -1,7 +1,7 @@
 import { Promise } from "../src/index";
 import { assert } from "chai";
 
-function getPromise(str: string, ms: number = 50) {
+function getPromise(str: string, ms: number = 10) {
   return new Promise(resolve => {
     setTimeout(function() {
       resolve(str);
@@ -37,6 +37,20 @@ describe("Promise", function() {
     new Promise((resolve, reject) => {
       resolve(getPromise("wenye"));
     }).then(r => {
+      assert.strictEqual(r, "wenye");
+      done();
+    });
+  });
+
+  it("multipart then", function(done) {
+    let count = 0;
+    const promise = getPromise("wenye");
+    promise.then(r => {
+      count++;
+      assert.strictEqual(r, "wenye");
+    });
+    promise.then(r => {
+      assert.strictEqual(count, 1);
       assert.strictEqual(r, "wenye");
       done();
     });
@@ -272,7 +286,7 @@ describe("Promise", function() {
       assert.strictEqual(r, undefined);
       done(new Error("不该执行"));
     });
-    setTimeout(done, 100);
+    setTimeout(done, 30);
   });
 
   it("Promise.race()", function(done) {
