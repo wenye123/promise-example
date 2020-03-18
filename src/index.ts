@@ -30,6 +30,66 @@ export class Promise {
     }
   }
 
+  /** 采用箭头函数是为了绑定this */
+  private resolve = (ret: any) => {
+    if (this.state === "pending") {
+      // resolve的值为promise实例或thenable
+      if (ret && (typeof ret === "object" || typeof ret === "function")) {
+        const then = ret.then;
+        if (typeof then === "function") {
+          then.call(ret, this.resolve, this.reject);
+          return;
+        }
+      }
+      // resolve的值为非IPromise实例
+      this.value = ret;
+      this.state = "resolved";
+      this.execute();
+    }
+  };
+
+  /** 采用箭头函数是为了绑定this */
+  private reject = (reason: any) => {
+    if (this.state === "pending") {
+      this.value = reason;
+      this.state = "rejected";
+      this.execute();
+    }
+  };
+
+  /** 处理任务，在一个promise周期中可能会调用两次 */
+  private handleTask(task: IPromiseTask) {
+    // 尚未resolve/reject时推入任务数组
+    if (this.state === "pending") {
+      this.tasks.push(task);
+      return;
+    }
+    // resolve/reject时执行cb回调
+    let cb = this.state === "resolved" ? task.resolveCb : task.rejectCb;
+    if (cb === undefined) {
+      cb = this.state === "resolved" ? task.resolve : task.reject;
+      cb(this.value);
+      return;
+    }
+    try {
+      const ret = cb(this.value);
+      task.resolve(ret);
+    } catch (err) {
+      task.reject(err);
+    }
+  }
+
+  /** 循环执行promise的回调 */
+  private execute() {
+    setTimeout(() => {
+      this.tasks.forEach(task => {
+        this.handleTask(task);
+      });
+    }, 0);
+  }
+
+  /******************* 静态方法 ***********************/
+
   /** 生成一个resolve的promsie实例 */
   static resolve(ret: any) {
     if (ret instanceof Promise) return ret;
@@ -97,6 +157,8 @@ export class Promise {
     });
   }
 
+  /******************* 原型方法 ***********************/
+
   then(resolveCb?: IPromiseResolveFn, rejectCb?: IPromiseRejectFn) {
     return new Promise((resolve, reject) => {
       this.handleTask({
@@ -126,64 +188,6 @@ export class Promise {
         },
       );
     });
-  }
-
-  /** 采用箭头函数是为了绑定this */
-  private resolve = (ret: any) => {
-    if (this.state === "pending") {
-      // resolve的值为promise实例或thenable
-      if (ret && (typeof ret === "object" || typeof ret === "function")) {
-        const then = ret.then;
-        if (typeof then === "function") {
-          then.call(ret, this.resolve, this.reject);
-          return;
-        }
-      }
-      // resolve的值为非IPromise实例
-      this.value = ret;
-      this.state = "resolved";
-      this.execute();
-    }
-  };
-
-  /** 采用箭头函数是为了绑定this */
-  private reject = (reason: any) => {
-    if (this.state === "pending") {
-      this.value = reason;
-      this.state = "rejected";
-      this.execute();
-    }
-  };
-
-  /** 处理任务，在一个promise周期中可能会调用两次 */
-  private handleTask(task: IPromiseTask) {
-    // 尚未resolve/reject时推入任务数组
-    if (this.state === "pending") {
-      this.tasks.push(task);
-      return;
-    }
-    // resolve/reject时执行cb回调
-    let cb = this.state === "resolved" ? task.resolveCb : task.rejectCb;
-    if (cb === undefined) {
-      cb = this.state === "resolved" ? task.resolve : task.reject;
-      cb(this.value);
-      return;
-    }
-    try {
-      const ret = cb(this.value);
-      task.resolve(ret);
-    } catch (err) {
-      task.reject(err);
-    }
-  }
-
-  /** 循环执行promise的回调 */
-  private execute() {
-    setTimeout(() => {
-      this.tasks.forEach(task => {
-        this.handleTask(task);
-      });
-    }, 0);
   }
 }
 
