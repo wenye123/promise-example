@@ -2,7 +2,7 @@
  * 一个promise搭配一个then，then的两个参数是promise完成后的成功或失败的回调函数，有多少个promise就要有多少个then
  */
 
-export type IPromiseExecFn = (resolve: IPromiseResove, reject: IPromiseReject) => any;
+export type IPromiseExecutor = (resolve: IPromiseResove, reject: IPromiseReject) => any;
 export type IPromiseResolveFn = (res: any) => any;
 export type IPromiseRejectFn = (reason: any) => any;
 export type IPromiseResove = (res: any) => void;
@@ -22,9 +22,9 @@ export class Promise {
   private state: IPromiseState = "pending";
 
   /** 构造函数 */
-  constructor(execFn: IPromiseExecFn) {
+  constructor(executor: IPromiseExecutor) {
     try {
-      execFn(this.resolve, this.reject);
+      executor(this.resolve, this.reject);
     } catch (e) {
       this.reject(e);
     }
@@ -112,7 +112,7 @@ export class Promise {
     });
   }
 
-  /** 所有promsie执行完才返回 */
+  /** 所有promsie resolve 或有一个reject 就返回 */
   static all(promises: any[]) {
     return new Promise((resolve, reject) => {
       let index = 0;
@@ -128,6 +128,7 @@ export class Promise {
             },
             e => {
               reject(e);
+              return;
             },
           );
         }
@@ -180,14 +181,13 @@ export class Promise {
       return Promise.resolve(cb()).then(
         () => {
           return val;
-        },
-        err => {
-          return Promise.reject(cb()).then(() => {
-            throw err;
-          });
-        },
+        }
       );
-    });
+    }, err => {
+      return Promise.resolve(cb()).then(() => {
+        throw err;
+      });
+    },);
   }
 }
 
