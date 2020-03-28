@@ -1,15 +1,20 @@
 export type IPromiseExecutor = (resolve: IPromiseResove, reject: IPromiseReject) => any;
-export type IPromiseResolveFn = (res: any) => any;
-export type IPromiseRejectFn = (reason: any) => any;
+export type IPromiseResolveCb = (res: any) => any;
+export type IPromiseRejectCb = (reason: any) => any;
 export type IPromiseResove = (res: any) => void;
 export type IPromiseReject = (reason: any) => void;
 export type IPromiseFinallyCb = () => any;
 export type IPromiseState = "pending" | "resolved" | "rejected";
 export interface IPromiseTask {
-  resolveCb: IPromiseResolveFn | undefined;
-  rejectCb: IPromiseRejectFn | undefined;
+  resolveCb: IPromiseResolveCb | undefined;
+  rejectCb: IPromiseRejectCb | undefined;
   resolve: IPromiseResove;
   reject: IPromiseReject;
+}
+
+/** 模拟微任务 */
+function microTask(fn: () => void) {
+  setTimeout(fn, 0);
 }
 
 export class Promise {
@@ -33,7 +38,9 @@ export class Promise {
       if (ret && (typeof ret === "object" || typeof ret === "function")) {
         const then = ret.then;
         if (typeof then === "function") {
-          then.call(ret, this.resolve, this.reject);
+          microTask(() => {
+            then.call(ret, this.resolve, this.reject);
+          });
           return;
         }
       }
@@ -53,6 +60,13 @@ export class Promise {
     }
   };
 
+  /** 循环执行promise的回调 */
+  private execute() {
+    this.tasks.forEach(task => {
+      this.handleTask(task);
+    });
+  }
+
   /** 处理任务，在一个promise周期中可能会调用两次 */
   private handleTask(task: IPromiseTask) {
     // 尚未resolve/reject时推入任务数组
@@ -61,38 +75,63 @@ export class Promise {
       return;
     }
     // resolve/reject时执行cb回调
-    let cb = this.state === "resolved" ? task.resolveCb : task.rejectCb;
-    if (cb === undefined) {
-      cb = this.state === "resolved" ? task.resolve : task.reject;
-      cb(this.value);
-      return;
-    }
-    try {
-      const ret = cb(this.value);
-      task.resolve(ret);
-    } catch (err) {
-      task.reject(err);
-    }
+    microTask(() => {
+      let cb = this.state === "resolved" ? task.resolveCb : task.rejectCb;
+      if (cb === undefined) {
+        cb = this.state === "resolved" ? task.resolve : task.reject;
+        cb(this.value);
+        return;
+      }
+      try {
+        const ret = cb(this.value);
+        task.resolve(ret);
+      } catch (err) {
+        task.reject(err);
+      }
+    });
   }
 
-  /** 循环执行promise的回调 */
-  private execute() {
-    setTimeout(() => {
-      this.tasks.forEach(task => {
-        this.handleTask(task);
+  /******************* 原型方法 ***********************/
+
+  then(resolveCb?: IPromiseResolveCb, rejectCb?: IPromiseRejectCb) {
+    return new Promise((resolve, reject) => {
+      this.handleTask({
+        resolveCb,
+        rejectCb,
+        resolve,
+        reject,
       });
-    }, 0);
+    });
+  }
+
+  catch(rejectCb?: IPromiseRejectCb) {
+    return this.then(undefined, rejectCb);
+  }
+
+  /** finally之后还可以继续then，并将值原封传递 */
+  finally(cb: IPromiseFinallyCb) {
+    return this.then(
+      val => {
+        return Promise.resolve(cb()).then(() => {
+          return val;
+        });
+      },
+      err => {
+        return Promise.resolve(cb()).then(() => {
+          throw err;
+        });
+      },
+    );
   }
 
   /******************* 静态方法 ***********************/
 
   /** 生成一个resolve的promsie实例 */
-  static resolve(ret: any) {
-    if (ret instanceof Promise) return ret;
+  static resolve(ret?: any) {
     return new Promise((resolve, reject) => {
       // thenable
       if (ret && (typeof ret === "object" || typeof ret === "function")) {
-        setTimeout(() => {
+        microTask(() => {
           (ret as Promise).then(resolve, reject);
         });
       } else {
@@ -102,7 +141,7 @@ export class Promise {
   }
 
   /** 生成一个reject的promise实例 */
-  static reject(reason: any) {
+  static reject(reason?: any) {
     return new Promise((resolve, reject) => {
       reject(reason);
     });
@@ -153,48 +192,17 @@ export class Promise {
       }
     });
   }
-
-  /******************* 原型方法 ***********************/
-
-  then(resolveCb?: IPromiseResolveFn, rejectCb?: IPromiseRejectFn) {
-    return new Promise((resolve, reject) => {
-      this.handleTask({
-        resolveCb,
-        rejectCb,
-        resolve,
-        reject,
-      });
-    });
-  }
-
-  catch(rejectCb?: IPromiseRejectFn) {
-    return this.then(undefined, rejectCb);
-  }
-
-  /** finally之后还可以继续then，并将值原封传递 */
-  finally(cb: IPromiseFinallyCb) {
-    return this.then(
-      val => {
-        return Promise.resolve(cb()).then(() => {
-          return val;
-        });
-      },
-      err => {
-        return Promise.resolve(cb()).then(() => {
-          throw err;
-        });
-      },
-    );
-  }
 }
 
-/** 测试出口 */
-// (Promise as any).defer = (Promise as any).deferred = function() {
-//   const dfd: any = {};
-//   dfd.promise = new Promise((resolve, reject) => {
-//     dfd.resolve = resolve;
-//     dfd.reject = reject;
-//   });
-//   return dfd;
-// };
-// module.exports = Promise;
+/** promise测试工具测试出口 */
+if (process.env.NODE_ENV === "test_promise") {
+  (Promise as any).defer = (Promise as any).deferred = function() {
+    const dfd: any = {};
+    dfd.promise = new Promise((resolve, reject) => {
+      dfd.resolve = resolve;
+      dfd.reject = reject;
+    });
+    return dfd;
+  };
+  module.exports = Promise;
+}

@@ -265,7 +265,7 @@ describe("Promise", function() {
         setTimeout(() => {
           count++;
           resolve("wenye");
-        });
+        }, 10);
       }),
       new Promise((resolve, reject) => {
         count++;
@@ -303,7 +303,7 @@ describe("Promise", function() {
         setTimeout(() => {
           count++;
           resolve("wenye");
-        });
+        }, 10);
       }),
       new Promise((resolve, reject) => {
         count++;

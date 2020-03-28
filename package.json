@@ -18,7 +18,7 @@
     "format": "prettier --write \"./{src,benchmark,test}/**/*.{js,ts,json,yaml}\"",
     "compile": "rm -rf dist && tsc",
     "prepublish": "npm run compile",
-    "promise-test": "tsc && promises-aplus-tests dist/index.js",
+    "promise-test": "export NODE_ENV=test_promise && tsc && promises-aplus-tests dist/index.js",
     "test": "npm run format && mocha test/test-*.ts",
     "test:cov": "nyc mocha test/test-*.ts"
   },
