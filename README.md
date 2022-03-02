@@ -9,4 +9,4 @@ npm run test
 ```
 代码覆盖率100%
 
-![测试覆盖率](https://cdn.wenye123.com/20200318162905.png)
+![测试覆盖率](./docs/test.png)
